@@ -1,0 +1,203 @@
+/* Profile Page Styles */
+.profile-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Arial', sans-serif;
+}
+
+.profile-container h1 {
+  text-align: center;
+  color: #2c3e50;
+  margin-bottom: 30px;
+  font-size: 2.5em;
+  font-weight: 300;
+}
+
+.profile-card {
+  background: #ffffff;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin-bottom: 30px;
+}
+
+.profile-info {
+  padding: 30px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.profile-info h2 {
+  margin: 0 0 20px 0;
+  font-size: 1.8em;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.profile-info p {
+  margin: 12px 0;
+  font-size: 1.1em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.profile-info b {
+  font-weight: 600;
+  color: #f8f9fa;
+}
+
+/* Section Styles */
+.requests-section,
+.codes-section,
+.collectors-section,
+.offers-section {
+  padding: 25px 30px;
+  border-top: 1px solid #e9ecef;
+}
+
+.requests-section h3,
+.codes-section h3,
+.collectors-section h3,
+.offers-section h3 {
+  color: #2c3e50;
+  margin: 0 0 20px 0;
+  font-size: 1.4em;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.requests-section h3::before {
+  content: "📋";
+}
+
+.codes-section h3::before {
+  content: "🎫";
+}
+
+.collectors-section h3::before {
+  content: "👥";
+}
+
+.offers-section h3::before {
+  content: "💰";
+}
+
+/* List Styles */
+.requests-list,
+.codes-list,
+.collectors-list,
+.offers-list {
+  display: grid;
+  gap: 15px;
+}
+
+.request-item,
+.code-item,
+.collector-item,
+.offer-item {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 10px;
+  border-left: 4px solid #667eea;
+  transition: all 0.3s ease;
+}
+
+.request-item:hover,
+.code-item:hover,
+.collector-item:hover,
+.offer-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.request-item p,
+.code-item p,
+.collector-item p,
+.offer-item p {
+  margin: 8px 0;
+  color: #495057;
+  font-size: 0.95em;
+}
+
+/* Placeholder text */
+.requests-section p[style*="color: #666"],
+.codes-section p[style*="color: #666"],
+.collectors-section p[style*="color: #666"],
+.offers-section p[style*="color: #666"] {
+  text-align: center;
+  padding: 40px 20px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  border: 2px dashed #dee2e6;
+  font-style: italic !important;
+  color: #6c757d !important;
+  font-size: 1.1em;
+}
+
+/* Login message */
+.profile-container > h2 {
+  text-align: center;
+  color: #dc3545;
+  background: #f8d7da;
+  padding: 20px;
+  border-radius: 10px;
+  border: 1px solid #f5c6cb;
+  margin: 50px auto;
+  max-width: 400px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .profile-container {
+    padding: 10px;
+  }
+  
+  .profile-container h1 {
+    font-size: 2em;
+  }
+  
+  .profile-info {
+    padding: 20px;
+  }
+  
+  .profile-info p {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  
+  .requests-section,
+  .codes-section,
+  .collectors-section,
+  .offers-section {
+    padding: 20px;
+  }
+  
+  .request-item,
+  .code-item,
+  .collector-item,
+  .offer-item {
+    padding: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-container h1 {
+    font-size: 1.8em;
+  }
+  
+  .profile-info h2 {
+    font-size: 1.5em;
+  }
+  
+  .profile-info p {
+    font-size: 1em;
+  }
+}
