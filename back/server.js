@@ -195,7 +195,15 @@ app.get('/api/requests/all', async (req, res) => {
 app.get('/api/requests/user/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-        const result = await db.query('SELECT * FROM requests WHERE user_id = $1 ORDER BY created_at DESC', [userId]);
+        const result = await db.query(`
+            SELECT r.*, 
+                   c.name as collector_name, 
+                   c.phone as collector_phone 
+            FROM requests r 
+            LEFT JOIN collectors c ON r.collector_id = c.id 
+            WHERE r.user_id = $1 
+            ORDER BY r.created_at DESC
+        `, [userId]);
         res.json(result.rows);
     } catch (error) {
         console.error('Error fetching requests:', error);

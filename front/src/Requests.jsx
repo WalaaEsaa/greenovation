@@ -285,7 +285,15 @@ const Requests = () => {
                     <p>🗺️ GPS: {typeof request.gps === 'object' ? `${request.gps.x}, ${request.gps.y}` : request.gps}</p>
                   )}
                   {request.collector_id && (
-                    <p>👤 Assigned to Collector: #{request.collector_id}</p>
+                    <div className="collector-info">
+                      <p>👤 Assigned to Collector: #{request.collector_id}</p>
+                      {request.collector_name && (
+                        <p>📛 Name: {request.collector_name}</p>
+                      )}
+                      {request.collector_phone && (
+                        <p>📞 Phone: {request.collector_phone}</p>
+                      )}
+                    </div>
                   )}
                 </div>
                 

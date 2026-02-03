@@ -11,7 +11,28 @@
   color: #2c3e50;
   margin-bottom: 30px;
   font-size: 2.5em;
-  font-weight: 300;
+  font-weight: 700;
+}
+
+/* Collector Info Styles */
+.collector-info {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 4px solid #28a745;
+  margin: 10px 0;
+}
+
+.collector-info p {
+  margin: 5px 0;
+  color: #495057;
+  font-weight: 500;
+}
+
+.collector-info p:first-child {
+  color: #2c3e50;
+  font-weight: 600;
+  margin-bottom: 8px;
 }
 
 /* Add Request Button */
