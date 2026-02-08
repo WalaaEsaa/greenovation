@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from './utils/api';
 import './Requests.css';
 
 const Requests = () => {
@@ -37,14 +38,8 @@ const Requests = () => {
   const fetchRequests = async (user, type) => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:4000/api/requests/user/${user.id}`);
-      const data = await response.json();
-      
-      if (response.ok) {
-        setRequests(data);
-      } else {
-        setError(data.error || 'Failed to fetch requests');
-      }
+      const response = await api.get(`/api/requests/user/${user.id}`);
+      setRequests(response.data);
       setLoading(false);
     } catch (err) {
       setError('Failed to fetch requests');
@@ -61,27 +56,17 @@ const Requests = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:4000/api/requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          user_id: userData.id,
-          weight: parseFloat(form.weight),
-          gps: form.gps || null
-        })
+      const response = await api.post('/api/requests', {
+        ...form,
+        user_id: userData.id,
+        weight: parseFloat(form.weight),
+        gps: form.gps || null
       });
 
-      const data = await response.json();
-      
-      if (response.ok) {
-        setRequests([data.request, ...requests]);
-        setForm({ weight: '', location: '', description: '', gps: '' });
-        setShowForm(false);
-        setError('');
-      } else {
-        setError(data.error || 'Failed to create request');
-      }
+      setRequests([response.data.request, ...requests]);
+      setForm({ weight: '', location: '', description: '', gps: '' });
+      setShowForm(false);
+      setError('');
     } catch (err) {
       setError('Failed to create request');
     }
@@ -89,27 +74,17 @@ const Requests = () => {
 
   const handleRespondToRequest = async (requestId, action) => {
     try {
-      const response = await fetch('http://localhost:4000/api/requests/respond', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          request_id: requestId,
-          user_id: userData.id,
-          action: action // 'accept' or 'reject'
-        })
+      const response = await api.put('/api/requests/respond', {
+        request_id: requestId,
+        user_id: userData.id,
+        action: action // 'accept' or 'reject'
       });
 
-      const data = await response.json();
-      
-      if (response.ok) {
-        // Update request in local state
-        setRequests(requests.map(req => 
-          req.id === requestId ? data.request : req
-        ));
-        alert(`Request ${action}ed successfully!`);
-      } else {
-        setError(data.error || `Failed to ${action} request`);
-      }
+      // Update request in local state
+      setRequests(requests.map(req => 
+        req.id === requestId ? response.data.request : req
+      ));
+      alert(`Request ${action}ed successfully!`);
     } catch (err) {
       setError(`Failed to ${action} request`);
     }

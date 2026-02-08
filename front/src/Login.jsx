@@ -81,9 +81,12 @@ const Login = ({ show, onClose, setUser }) => {
         type: accountType,
       });
 
-      setUser(response.data.user);
-      localStorage.setItem("greenovation_user", JSON.stringify(response.data.user));
-      localStorage.setItem("greenovation_user_type", accountType);
+      // Store JWT token and user data
+      const { token, user, type } = response.data;
+      setUser(user);
+      localStorage.setItem("greenovation_user", JSON.stringify(user));
+      localStorage.setItem("greenovation_user_type", type);
+      localStorage.setItem("greenovation_token", token);
 
       setSuccess("✅ تم تسجيل الدخول بنجاح");
       // Navigate to profile page

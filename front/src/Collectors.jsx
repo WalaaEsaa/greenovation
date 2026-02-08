@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from './utils/api';
 import './Collectors.css';
 
 const Collectors = () => {
@@ -37,14 +38,8 @@ const Collectors = () => {
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:4000/api/requests/all');
-      const data = await response.json();
-      
-      if (response.ok) {
-        setRequests(data);
-      } else {
-        setError(data.error || 'Failed to fetch requests');
-      }
+      const response = await api.get('/api/requests/all');
+      setRequests(response.data);
       setLoading(false);
     } catch (err) {
       setError('Failed to fetch requests');
@@ -60,29 +55,18 @@ const Collectors = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:4000/api/requests/collect', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          request_id: requestId,
-          collector_id: userData.id,
-          collector_location: collectorLocation
-        })
+      const response = await api.put('/api/requests/collect', {
+        request_id: requestId,
+        collector_location: collectorLocation
       });
 
-      const data = await response.json();
-      
-      if (response.ok) {
-        // Update request status in local state
-        setRequests(requests.map(req => 
-          req.id === requestId 
-            ? { ...req, status: 'assigned', collector_id: userData.id }
-            : req
-        ));
-        alert('Request collected successfully!');
-      } else {
-        setError(data.error || 'Failed to collect request');
-      }
+      // Update request status in local state
+      setRequests(requests.map(req => 
+        req.id === requestId 
+          ? { ...req, status: 'assigned', collector_id: userData.id }
+          : req
+      ));
+      alert('Request collected successfully!');
     } catch (err) {
       setError('Failed to collect request');
     }
@@ -90,28 +74,17 @@ const Collectors = () => {
 
   const handleCompleteRequest = async (requestId) => {
     try {
-      const response = await fetch('http://localhost:4000/api/requests/complete', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          request_id: requestId,
-          collector_id: userData.id
-        })
+      const response = await api.put('/api/requests/complete', {
+        request_id: requestId
       });
 
-      const data = await response.json();
-      
-      if (response.ok) {
-        // Update request status in local state
-        setRequests(requests.map(req => 
-          req.id === requestId 
-            ? { ...req, status: 'completed', completed_at: new Date().toISOString() }
-            : req
-        ));
-        alert('Request marked as completed!');
-      } else {
-        setError(data.error || 'Failed to complete request');
-      }
+      // Update request status in local state
+      setRequests(requests.map(req => 
+        req.id === requestId 
+          ? { ...req, status: 'completed', completed_at: new Date().toISOString() }
+          : req
+      ));
+      alert('Request completed successfully!');
     } catch (err) {
       setError('Failed to complete request');
     }

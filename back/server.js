@@ -1,25 +1,133 @@
 const bodyParser = require('body-parser');
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const jwt = require('jsonwebtoken');
 const {Pool} = require('pg');
 const bcrypt = require('bcrypt');
+require('dotenv').config();
+
 const app = express();
 
-app.use(express.json()); // Use built-in JSON parser
-app.use(cors());
+// Security Middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+}));
 
-const PORT = 4000;
-// const userCode = "";
-// let resultt=0;
-
-const db = new Pool({
-    user: 'postgres',
-    host: 'localhost',
-    database: 'Greenovation',
-    password: 'abdo4495',
-    port: 5432,
+// Rate Limiting
+const limiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
+  message: {
+    error: 'Too many requests from this IP, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
+app.use(limiter);
+
+// CORS Configuration
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://yourdomain.com'] 
+    : ['http://localhost:3000', 'http://localhost:3001'],
+  credentials: true
+}));
+
+app.use(express.json()); // Use built-in JSON parser
+
+const PORT = process.env.PORT || 4000;
+
+const db = new Pool({
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASSWORD,
+    port: process.env.DB_PORT,
+});
+
+// JWT Authentication Middleware
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid or expired token' });
+    }
+    req.user = user;
+    next();
+  });
+};
+
+// Role-based Authorization Middleware
+const authorize = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    
+    if (!roles.includes(req.user.type)) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+    
+    next();
+  };
+};
+
+// Input Validation Middleware
+const validateInput = (schema) => {
+  return (req, res, next) => {
+    const { error } = schema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ 
+        error: 'Validation failed', 
+        details: error.details.map(d => d.message) 
+      });
+    }
+    next();
+  };
+};
+
+// Input Sanitization Middleware
+const sanitizeInput = (req, res, next) => {
+  // Basic XSS prevention
+  if (req.body) {
+    Object.keys(req.body).forEach(key => {
+      if (typeof req.body[key] === 'string') {
+        req.body[key] = req.body[key]
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#x27;')
+          .replace(/\//g, '&#x2F;');
+      }
+    });
+  }
+  next();
+};
+
+// Apply sanitization to all requests
+app.use(sanitizeInput);
+
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - IP: ${req.ip}`);
+  next();
+});
 
 // User signup endpoint
 app.post('/users', async (req, res) => {
@@ -70,41 +178,57 @@ app.post('/users/login', async (req, res) => {
 
   if (!email ||!password ||!type) {
     return res.status(400).json({ error: 'Missing login credentials'});
-}
+  }
 
   try {
     let result;
 
     if (type === 'user') {
       result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
-} else if (type === 'seller') {
-      result = await db.query('SELECT * FROM sellers WHERE email = $1', [email]);
-} else if (type === 'collector') {
+    } else if (type === 'collector') {
       result = await db.query('SELECT * FROM collectors WHERE email = $1', [email]);
-} else {
-      return res.status(400).json({ error: 'Invalid account type'});
-}
-
-    if (!result || result.rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid credentials'});
-}
-
-    const user = result.rows[0];
-    //code user
-    // userCode = user.code_user;
-    console.log('Retrieved user:', user);
-    // console.log('code user:', userCode);
-    const validPassword = await bcrypt.compare(password, user.password);
-
-    if (!validPassword) {
-      return res.status(401).json({ error: 'Invalid credentials'});
+    } else if (type === 'seller') {
+      result = await db.query('SELECT * FROM sellers WHERE email = $1', [email]);
+    } else {
+      return res.status(400).json({ error: 'Invalid user type' });
     }
 
-    res.json({ success: true, user});
-} catch (error) {
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const user = result.rows[0];
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Create JWT token
+    const token = jwt.sign(
+      { 
+        id: user.id, 
+        email: user.email, 
+        type: type,
+        name: user.name 
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+    );
+
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = user;
+
+    res.json({ 
+      success: true, 
+      token,
+      user: userWithoutPassword,
+      type: type
+    });
+  } catch (error) {
     console.error('Error in login:', error);
-    res.status(500).json({ error: 'Login failed'});
-}
+    res.status(500).json({ error: 'Login failed' });
+  }
 });
 
 // جلب طلبات المستخدم
@@ -211,9 +335,14 @@ app.get('/api/requests/user/:userId', async (req, res) => {
     }
 });
 
-app.post('/api/requests', async (req, res) => {
+app.post('/api/requests', authenticateToken, authorize('user'), async (req, res) => {
     try {
         console.log('Request body received:', req.body);
+        
+        // Validate that the user is creating a request for themselves
+        if (req.body.user_id !== req.user.id) {
+            return res.status(403).json({ error: 'Cannot create requests for other users' });
+        }
         
         const { user_id, weight, location, description, gps } = req.body;
         
@@ -257,9 +386,15 @@ app.get('/api/requests/all', async (req, res) => {
     }
 });
 
-app.put('/api/requests/collect', async (req, res) => {
+app.put('/api/requests/collect', authenticateToken, authorize('collector'), async (req, res) => {
     try {
-        const { request_id, collector_id, collector_location } = req.body;
+        const { request_id, collector_location } = req.body;
+        const collector_id = req.user.id; // Get collector ID from authenticated token
+        
+        // Validate that the collector is assigning the request to themselves
+        if (req.body.collector_id && req.body.collector_id !== req.user.id) {
+            return res.status(403).json({ error: 'Cannot assign requests to other collectors' });
+        }
         
         if (!request_id || !collector_id) {
             return res.status(400).json({ error: 'Missing required fields' });
@@ -312,9 +447,15 @@ app.get('/api/offers/:sellerId', async (req, res) => {
     }
 });
 
-app.post('/api/offers', async (req, res) => {
+app.post('/api/offers', authenticateToken, authorize('seller'), async (req, res) => {
     try {
-        const { seller_id, title, description, price, location, gps, material_type } = req.body;
+        const { title, description, price, location, gps, material_type } = req.body;
+        const seller_id = req.user.id; // Get seller ID from authenticated token
+        
+        // Validate that the seller is creating an offer for themselves
+        if (req.body.seller_id && req.body.seller_id !== req.user.id) {
+            return res.status(403).json({ error: 'Cannot create offers for other sellers' });
+        }
         
         if (!seller_id || !title || !price || !location) {
             return res.status(400).json({ error: 'Missing required fields' });
@@ -343,7 +484,7 @@ app.post('/api/offers', async (req, res) => {
     }
 });
 
-app.delete('/api/offers/:offerId', async (req, res) => {
+app.delete('/api/offers/:offerId', authenticateToken, authorize('seller'), async (req, res) => {
     try {
         const { offerId } = req.params;
         
@@ -355,6 +496,11 @@ app.delete('/api/offers/:offerId', async (req, res) => {
         }
         
         const offer = offerResult.rows[0];
+        
+        // Verify that the seller owns this offer
+        if (offer.seller_id !== req.user.id) {
+            return res.status(403).json({ error: 'Cannot delete offers from other sellers' });
+        }
         
         // Delete the offer
         const deleteResult = await db.query('DELETE FROM offers WHERE id = $1 RETURNING *', [offerId]);
